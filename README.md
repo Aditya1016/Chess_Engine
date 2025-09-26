@@ -46,7 +46,7 @@ This is a simple, fast chess engine written in C, supporting the Universal Chess
 ### Clone the Repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Aditya1016/Chess_Engine
 cd chess_engine
 ```
 
@@ -85,5 +85,6 @@ Then connect with your favorite UCI-compatible chess GUI.
 MIT
 
 ---
+
 
 
