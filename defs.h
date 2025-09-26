@@ -31,11 +31,16 @@ typedef unsigned long long U64;
 #define MAXGAMEMOVES 2048
 #define MAXPOSITIONMOVES 256
 #define MAXDEPTH 64
+#define MAXTHREADS 64
 
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+#define FINE_70 "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - -"
+#define WAC_2 "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - -"
+#define LCT_1 "r3kb1r/3n1pp1/p6p/2pPp2q/Pp2N3/3B2PP/1PQ2P2/R3K2R w KQkq -"
 
-#define INF_BOUND 30000
-#define ISMATE (INF_BOUND - MAXDEPTH)
+#define INF_BOUND 32000
+#define AB_BOUND 30000
+#define ISMATE (AB_BOUND - MAXDEPTH)
 
 enum
 {
@@ -84,12 +89,12 @@ enum
     BLACK,
     BOTH
 };
-enum
-{
-    UCIMODE,
-    XBOARDMODE,
-    CONSOLEMODE
-};
+// enum
+// {
+//     UCIMODE,
+//     XBOARDMODE,
+//     CONSOLEMODE
+// };
 enum
 {
     A1 = 21,
@@ -196,12 +201,14 @@ enum
 
 typedef struct
 {
-    U64 posKey;
+    /*U64 posKey;
     int move;
     int score;
     int depth;
-    int flags;
+    int flags;*/
     int age;
+    U64 smp_data;
+    U64 smp_key;
 } S_HASHENTRY;
 
 typedef struct
@@ -281,8 +288,10 @@ typedef struct
     float fhf;
     int nullCut;
 
-    int GAME_MODE;
-    int POST_THINKING;
+    int threadNum;
+
+    // int GAME_MODE;
+    // int POST_THINKING;
 
 } S_SEARCHINFO;
 
@@ -291,11 +300,22 @@ typedef struct
     int UseBook;
 } S_OPTIONS;
 
-typedef struct {
+typedef struct
+{
     S_SEARCHINFO *info;
     S_BOARD *originalPosition;
     S_HASHTABLE *ttable;
 } S_SEARCH_THREAD_DATA;
+
+typedef struct {
+    S_BOARD *pos;
+    S_SEARCHINFO *info;
+    S_HASHTABLE *ttable;
+
+    int threadNumber;
+    int depth;
+    int bestMove;
+} S_SEARCH_WORKER_DATA;
 
 /* GAME MOVE */
 
@@ -447,6 +467,7 @@ extern int SearchPosition_Thread(void *data);
 extern int GetTimeMs();
 
 // pvtable.c
+extern void TempHashTest(char *fen);
 extern void InitHashTable(S_HASHTABLE *table, const int MB);
 extern void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score, const int flags, const int depth);
 extern int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int alpha, int beta, int depth);
@@ -460,9 +481,9 @@ extern int EvalPosition(const S_BOARD *pos);
 // uci.c
 extern void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info);
 
-// xboard.c
-extern void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *HashTable);
-extern void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *HashTable);
+// xboard.c (removed)
+// extern void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *HashTable);
+// extern void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *HashTable);
 
 // polybook.c
 extern int GetBookMove(S_BOARD *board);
