@@ -3,12 +3,14 @@
 #include "stdio.h"
 #include "defs.h"
 
-int GetPvLine(const int depth, S_BOARD *pos)
+S_HASHTABLE HashTable[1];
+
+int GetPvLine(const int depth, S_BOARD *pos, const S_HASHTABLE *table)
 {
 
     ASSERT(depth < MAXDEPTH && depth >= 1);
 
-    int move = ProbePvMove(pos);
+    int move = ProbePvMove(pos, table);
     int count = 0;
 
     while (move != NOMOVE && count < depth)
@@ -25,7 +27,7 @@ int GetPvLine(const int depth, S_BOARD *pos)
         {
             break;
         }
-        move = ProbePvMove(pos);
+        move = ProbePvMove(pos, table);
     }
 
     while (pos->ply > 0)
@@ -48,8 +50,10 @@ void ClearHashTable(S_HASHTABLE *table)
         tableEntry->depth = 0;
         tableEntry->score = 0;
         tableEntry->flags = 0;
+        tableEntry->age = 0;
     }
     table->newWrite = 0;
+    table->currentAge = 0;
 }
 
 void InitHashTable(S_HASHTABLE *table, const int MB)
@@ -73,40 +77,40 @@ void InitHashTable(S_HASHTABLE *table, const int MB)
     else
     {
         ClearHashTable(table);
-        printf("HashTable init complete with %d entries\n", table->numEntries);
+        printf("table init complete with %d entries\n", table->numEntries);
     }
 }
 
-int ProbeHashEntry(S_BOARD *pos, int *move, int *score, int alpha, int beta, int depth)
+int ProbeHashEntry(S_BOARD *pos, S_HASHTABLE *table, int *move, int *score, int alpha, int beta, int depth)
 {
 
-    int index = pos->posKey % pos->HashTable->numEntries;
+    int index = pos->posKey % table->numEntries;
 
-    ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
+    ASSERT(index >= 0 && index <= pos->table->numEntries - 1);
     ASSERT(depth >= 1 && depth < MAXDEPTH);
     ASSERT(alpha < beta);
-    ASSERT(alpha >= -INFINITE && alpha <= INFINITE);
-    ASSERT(beta >= -INFINITE && beta <= INFINITE);
+    ASSERT(alpha >= -INF_BOUND && alpha <= INF_BOUND);
+    ASSERT(beta >= -INF_BOUND && beta <= INF_BOUND);
     ASSERT(pos->ply >= 0 && pos->ply < MAXDEPTH);
 
-    if (pos->HashTable->pTable[index].posKey == pos->posKey)
+    if (table->pTable[index].posKey == pos->posKey)
     {
-        *move = pos->HashTable->pTable[index].move;
-        if (pos->HashTable->pTable[index].depth >= depth)
+        *move = table->pTable[index].move;
+        if (table->pTable[index].depth >= depth)
         {
-            pos->HashTable->hit++;
+            table->hit++;
 
-            ASSERT(pos->HashTable->pTable[index].depth >= 1 && pos->HashTable->pTable[index].depth < MAXDEPTH);
-            ASSERT(pos->HashTable->pTable[index].flags >= HFALPHA && pos->HashTable->pTable[index].flags <= HFEXACT);
+            ASSERT(table->pTable[index].depth >= 1 && table->pTable[index].depth < MAXDEPTH);
+            ASSERT(table->pTable[index].flags >= HFALPHA && table->pTable[index].flags <= HFEXACT);
 
-            *score = pos->HashTable->pTable[index].score;
+            *score = table->pTable[index].score;
             if (*score > ISMATE)
                 *score -= pos->ply;
             else if (*score < -ISMATE)
                 *score += pos->ply;
 
-            ASSERT(*score >= -INFINITE && *score <= INFINITE);
-            switch (pos->HashTable->pTable[index].flags)
+            ASSERT(*score >= -INF_BOUND && *score <= INF_BOUND);
+            switch (table->pTable[index].flags)
             {
 
             case HFALPHA:
@@ -136,47 +140,56 @@ int ProbeHashEntry(S_BOARD *pos, int *move, int *score, int alpha, int beta, int
     return FALSE;
 }
 
-void StoreHashEntry(S_BOARD *pos, const int move, int score, const int flags, const int depth)
+void StoreHashEntry(S_BOARD *pos, S_HASHTABLE *table, const int move, int score, const int flags, const int depth)
 {
 
-    int index = pos->posKey % pos->HashTable->numEntries;
+    int index = pos->posKey % table->numEntries;
 
-    ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
+    ASSERT(index >= 0 && index <= table->numEntries - 1);
     ASSERT(depth >= 1 && depth < MAXDEPTH);
     ASSERT(flags >= HFALPHA && flags <= HFEXACT);
-    ASSERT(score >= -INFINITE && score <= INFINITE);
+    ASSERT(score >= -INF_BOUND && score <= INF_BOUND);
     ASSERT(pos->ply >= 0 && pos->ply < MAXDEPTH);
 
-    if (pos->HashTable->pTable[index].posKey == 0)
+    int replace = FALSE;
+
+    if (table->pTable[index].posKey == 0)
     {
-        pos->HashTable->newWrite++;
+        table->newWrite++;
+        replace = TRUE;
     }
     else
     {
-        pos->HashTable->overWrite++;
+        if (table->pTable[index].age < table->currentAge || table->pTable[index].depth <= depth)
+        {
+            replace = TRUE;
+        }
     }
+
+    if(replace == FALSE) return;
 
     if (score > ISMATE)
         score += pos->ply;
     else if (score < -ISMATE)
         score -= pos->ply;
 
-    pos->HashTable->pTable[index].move = move;
-    pos->HashTable->pTable[index].posKey = pos->posKey;
-    pos->HashTable->pTable[index].flags = flags;
-    pos->HashTable->pTable[index].score = score;
-    pos->HashTable->pTable[index].depth = depth;
+    table->pTable[index].move = move;
+    table->pTable[index].posKey = pos->posKey;
+    table->pTable[index].flags = flags;
+    table->pTable[index].score = score;
+    table->pTable[index].depth = depth;
+    table->pTable[index].age = table->currentAge;
 }
 
-int ProbePvMove(const S_BOARD *pos)
+int ProbePvMove(const S_BOARD *pos, const S_HASHTABLE *table)
 {
 
-    int index = pos->posKey % pos->HashTable->numEntries;
-    ASSERT(index >= 0 && index <= pos->HashTable->numEntries - 1);
+    int index = pos->posKey % table->numEntries;
+    ASSERT(index >= 0 && index <= table->numEntries - 1);
 
-    if (pos->HashTable->pTable[index].posKey == pos->posKey)
+    if (table->pTable[index].posKey == pos->posKey)
     {
-        return pos->HashTable->pTable[index].move;
+        return table->pTable[index].move;
     }
 
     return NOMOVE;

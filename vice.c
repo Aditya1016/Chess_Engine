@@ -16,8 +16,8 @@ int main(int argc, char *argv[])
     S_BOARD pos[1];
     S_SEARCHINFO info[1];
     info->quit = FALSE;
-    pos->HashTable->pTable = NULL;
-    InitHashTable(pos->HashTable, 64);
+    HashTable->pTable = NULL;
+    InitHashTable(HashTable, 64);
     setbuf(stdin, NULL);
     setbuf(stdout, NULL);
 
@@ -51,27 +51,13 @@ int main(int argc, char *argv[])
                 break;
             continue;
         }
-        else if (!strncmp(line, "xboard", 6))
-        {
-            XBoard_Loop(pos, info);
-            if (info->quit == TRUE)
-                break;
-            continue;
-        }
-        else if (!strncmp(line, "vice", 4))
-        {
-            Console_Loop(pos, info);
-            if (info->quit == TRUE)
-                break;
-            continue;
-        }
         else if (!strncmp(line, "quit", 4))
         {
             break;
         }
     }
 
-    free(pos->HashTable->pTable);
+    free(HashTable->pTable);
     CleanPolyBook();
     return 0;
 }
