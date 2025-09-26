@@ -78,5 +78,3 @@ MIT
 
 ---
 
-**For contributors:**  
-Vice welcomes improvements, especially in evaluation and search. Please open issues or submit pull requests for new features or bug fixes.
