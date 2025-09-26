@@ -3,11 +3,39 @@
 #include "stdio.h"
 #include "defs.h"
 #include "string.h"
+#include "tinycthread.h"
 
 #define INPUTBUFFER 400 * 6
 
+thrd_t mainSearchThread;
+
+thrd_t LaunchSearchThread(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *table)
+{
+
+    S_SEARCH_THREAD_DATA *pSearchData = malloc(sizeof(S_SEARCH_THREAD_DATA));
+
+    pSearchData->info = info;
+    pSearchData->originalPosition = pos;
+    pSearchData->ttable = table;
+
+    thrd_t thread;
+
+    if (thrd_create(&thread, &SearchPosition_Thread, (void *)pSearchData) != thrd_success)
+    {
+        printf("Error Creating Search Thread\n");
+        return 0;
+    }
+    return thread;
+}
+
+void JoinSearchThread(S_SEARCHINFO *info)
+{
+    info->stopped = TRUE;
+    thrd_join(mainSearchThread, NULL);
+}
+
 // go depth 6 wtime 180000 btime 100000 binc 1000 winc 1000 movetime 1000 movestogo 40
-void ParseGo(char *line, S_SEARCHINFO *info, S_BOARD *pos)
+void ParseGo(char *line, S_SEARCHINFO *info, S_BOARD *pos, S_HASHTABLE *table)
 {
 
     int depth = -1, movestogo = 30, movetime = -1;
@@ -79,7 +107,8 @@ void ParseGo(char *line, S_SEARCHINFO *info, S_BOARD *pos)
 
     printf("time:%d start:%d stop:%d depth:%d timeset:%d\n",
            time, info->starttime, info->stoptime, info->depth, info->timeset);
-    SearchPosition(pos, info);
+    // SearchPosition(pos, info, HashTable);
+    mainSearchThread = LaunchSearchThread(pos, info, table);
 }
 
 // position fen fenstr
@@ -134,6 +163,7 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
 {
 
     info->GAME_MODE = UCIMODE;
+    EngineOptions->UseBook = FALSE;
 
     setbuf(stdin, NULL);
     setbuf(stdout, NULL);
@@ -142,7 +172,7 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
     printf("id name %s\n", NAME);
     printf("id author Bluefever\n");
     printf("option name Hash type spin default 64 min 4 max %d\n", MAX_HASH);
-    printf("option name Book type check default true\n");
+    printf("option name Book type check default false\n");
     printf("uciok\n");
 
     int MB = 64;
@@ -168,16 +198,27 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
         }
         else if (!strncmp(line, "ucinewgame", 10))
         {
+            ClearHashTable(HashTable);
             ParsePosition("position startpos\n", pos);
         }
         else if (!strncmp(line, "go", 2))
         {
             printf("Seen Go..\n");
-            ParseGo(line, info, pos);
+            ParseGo(line, info, pos, HashTable);
+        }
+        else if (!strncmp(line, "run", 3))
+        {
+            ParseFen(START_FEN, pos);
+            ParseGo("go infinite", info, pos, HashTable);
+        }
+        else if (!strncmp(line, "stop", 4))
+        {
+            JoinSearchThread(info);
         }
         else if (!strncmp(line, "quit", 4))
         {
             info->quit = TRUE;
+            JoinSearchThread(info);
             break;
         }
         else if (!strncmp(line, "uci", 3))
@@ -188,7 +229,7 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
         }
         else if (!strncmp(line, "debug", 4))
         {
-            DebugAnalysisTest(pos, info);
+            DebugAnalysisTest(pos, info, HashTable);
             break;
         }
         else if (!strncmp(line, "setoption name Hash value ", 26))
@@ -199,7 +240,7 @@ void Uci_Loop(S_BOARD *pos, S_SEARCHINFO *info)
             if (MB > MAX_HASH)
                 MB = MAX_HASH;
             printf("Set Hash to %d MB\n", MB);
-            InitHashTable(pos->HashTable, MB);
+            InitHashTable(HashTable, MB);
         }
         else if (!strncmp(line, "setoption name Book value ", 26))
         {

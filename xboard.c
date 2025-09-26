@@ -119,7 +119,7 @@ void PrintOptions()
     printf("feature done=1\n");
 }
 
-void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info)
+void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *HashTable)
 {
 
     info->GAME_MODE = XBOARDMODE;
@@ -168,7 +168,7 @@ void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info)
 
             printf("time:%d start:%d stop:%d depth:%d timeset:%d movestogo:%d mps:%d\n",
                    time, info->starttime, info->stoptime, info->depth, info->timeset, movestogo[pos->side], mps);
-            SearchPosition(pos, info);
+            SearchPosition(pos, info, HashTable);
 
             if (mps != 0)
             {
@@ -239,7 +239,7 @@ void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info)
             if (MB > MAX_HASH)
                 MB = MAX_HASH;
             printf("Set Hash to %d MB\n", MB);
-            InitHashTable(pos->HashTable, MB);
+            InitHashTable(HashTable, MB);
             continue;
         }
 
@@ -276,7 +276,7 @@ void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info)
 
         if (!strcmp(command, "new"))
         {
-            ClearHashTable(pos->HashTable);
+            ClearHashTable(HashTable);
             engineSide = BLACK;
             ParseFen(START_FEN, pos);
             depth = -1;
@@ -309,7 +309,7 @@ void XBoard_Loop(S_BOARD *pos, S_SEARCHINFO *info)
     }
 }
 
-void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info)
+void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info, S_HASHTABLE *HashTable)
 {
 
     printf("Welcome to Vice In Console Mode!\n");
@@ -344,7 +344,7 @@ void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info)
                 info->stoptime = info->starttime + movetime;
             }
 
-            SearchPosition(pos, info);
+            SearchPosition(pos, info, HashTable);
         }
 
         printf("\nVice > ");
@@ -463,7 +463,7 @@ void Console_Loop(S_BOARD *pos, S_SEARCHINFO *info)
 
         if (!strcmp(command, "new"))
         {
-            ClearHashTable(pos->HashTable);
+            ClearHashTable(HashTable);
             engineSide = BLACK;
             ParseFen(START_FEN, pos);
             continue;
