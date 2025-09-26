@@ -4,6 +4,14 @@ This is a simple, fast chess engine written in C, supporting the Universal Chess
 
 ---
 
+## ⚙️ Tech Stack
+
+![C](https://img.shields.io/badge/Language-C-blue?logo=c&logoColor=white)
+![Makefile](https://img.shields.io/badge/Build-Makefile-yellow?logo=gnu&logoColor=white)
+![UCI](https://img.shields.io/badge/Protocol-UCI-green?logo=chessdotcom&logoColor=white)
+
+---
+
 ## Features
 
 - **Alpha-Beta Search:** Efficient pruning for faster move calculation.
@@ -77,4 +85,5 @@ Then connect with your favorite UCI-compatible chess GUI.
 MIT
 
 ---
+
 
