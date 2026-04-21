@@ -4,7 +4,7 @@ project(ChessEngine C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-file(GLOB SOURCES "*.c")
+file(GLOB SOURCES CONFIGURE_DEPENDS "*.c")
 
 add_executable(program ${SOURCES})
 
